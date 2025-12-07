@@ -3,7 +3,6 @@ package com.interviewbuddy.interviewbuddy.Users;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.google.genai.Client;
@@ -37,14 +36,14 @@ public class UserController {
         return "Failure";
     }
     @PostMapping("/GenerateQuestion")
-    public String GenerateQuestion(@RequestParam String question_type)
+    public String GenerateQuestion(@RequestBody Questions question_type)
     {
         String api_key = System.getenv("GEMINI_API_KEY");
         System.out.println("API KEY: "+api_key);
         Iterable<Questions> questions= questionrepository.findAll();
-        String prompt = "Imagine you are an Interviewer,and are supposed to take interview on"+question_type+".Generate a question as part of this interview,and send it back as a response.Just send me the question withou any additional explanation.JUST THE QUESTION,and does not exceed 200 characters.Ensure that this question is unique and is not part of the following questions listed below:";
+        String prompt = "Imagine you are an Interviewer,and are supposed to take interview on"+question_type.question+".Generate a question as part of this interview,and send it back as a response.Just send me the question withou any additional explanation.JUST THE QUESTION,and does not exceed 200 characters.Ensure that this question is unique and is not part of the following questions listed below:";
         for(Questions q:questions)
-        {
+        {   if(q.userid==question_type.userid)
             prompt+=q.question+".";
         }
         Client client = Client.builder().apiKey(api_key).build();;
@@ -55,6 +54,7 @@ public class UserController {
             null);
         Questions generated_question = new Questions();
         generated_question.question = response.text();
+        generated_question.userid = question_type.userid;
         questionrepository.save(generated_question);
     return response.text();
     }
