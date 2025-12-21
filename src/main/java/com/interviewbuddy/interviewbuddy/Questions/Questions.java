@@ -11,4 +11,6 @@ public class Questions {
     public String question;
     @Column
     public int userid;
+    @Column
+    public boolean response;
 }

@@ -3,6 +3,7 @@ package com.interviewbuddy.interviewbuddy.Users;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.google.genai.Client;
@@ -63,13 +64,50 @@ public class UserController {
     {
         String key = System.getenv("GEMINI_API_KEY");
         Client client = Client.builder().apiKey(key).build();
-        String prompt = "Imagine you are an Interviewer,and are supposed to validate the response provided by the user for a given question.Here is the question:"+Response.question+"and the answer provided:"+Response.answer+".Give your feedback on this answer provided by the user,and tell them whether the answer is right or wrong,and why it is right/wrong. Just provide the response as right/wrong,and the explanation behind this validation.DONT PROVIDE ANY ADDITIONAL INFORMATION";
+        String prompt = "Imagine you are an Interviewer,and are supposed to validate the response provided by the user for a given question.Here is the question:"+Response.question+"and the answer provided:"+Response.answer+".Give your feedback on this answer provided by the user,and tell them whether the answer is right or wrong,and why it is right/wrong. Just provide the response as right/wrong,and the explanation behind this validation.DONT PROVIDE ANY ADDITIONAL INFORMATION.Your response should be as follows: Line 1:True/False,Line 2:Explanation";
         GenerateContentResponse response =
         client.models.generateContent(
             "gemini-2.5-flash",
             prompt,
             null);
-return response.text();
+        boolean response1;
+        if (response.text().charAt(0)=='T')
+        {
+            response1  = true;
+        }
+        else{
+            response1=false;
+        }
+
+        Iterable<Questions> responses=questionrepository.findAll();
+        for(Questions q:responses)
+        {
+            if(q.question.equals(Response.question) && q.userid==Response.userid)
+            {
+                q.response=response1;
+                questionrepository.save(q);
+            }
+        }
+        return response.text();
+    }
+    @PostMapping("/Feedback")
+    public String Feedback(@RequestParam String type)
+    {
+        String prompt="I'll give you a list of questions along with whether the user has provided correct feedback for those questions.But you only have to provide feedback to the questions which match this topic:"+type+".Here is the list:";
+        String key = System.getenv("GEMINI_API_KEY");
+        Client client = Client.builder().apiKey(key).build();
+        Iterable<Questions> responses=questionrepository.findAll();
+        for(Questions q:responses)
+        {
+            
+            prompt+="Question:"+q.question+",Correctness:"+q.response+".";
+        }
+        GenerateContentResponse response =client.models.generateContent(
+            "gemini-2.5-flash",
+            prompt,
+            null);
+        return response.text();
+        
     }
 
 }
